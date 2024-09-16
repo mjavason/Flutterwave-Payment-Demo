@@ -5,6 +5,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import { setupSwagger } from './swagger.config';
+import { ApiService } from './api.util';
 
 //#region App Setup
 const app = express();
@@ -12,6 +13,10 @@ const app = express();
 dotenv.config({ path: './.env' });
 const PORT = process.env.PORT || 5000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const FLUTTERWAVE_PUBLIC_KEY = process.env.FLUTTERWAVE_PUBLIC_KEY || 'xxxxx';
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || 'xxxxx';
+const FLUTTERWAVE_ENCRYPTION_KEY =
+  process.env.FLUTTERWAVE_ENCRYPTION_KEY || 'xxxxx';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -19,10 +24,40 @@ app.use(cors());
 app.use(morgan('dev'));
 setupSwagger(app, BASE_URL);
 
+const flutterwaveAPI = new ApiService('https://api.flutterwave.com/v3');
+
 //#endregion App Setup
 
 //#region Code here
-console.log('Hello world');
+
+app.get('/checkout', async (req: Request, res: Response) => {
+  const result = await flutterwaveAPI.post(
+    '/payments',
+    {
+      tx_ref: 'ref',
+      amount: 200,
+      currency: 'NGN',
+      redirect_url: 'https://flutterwave.com/ng',
+      customer: {
+        email: 'user@example.com',
+        phone_number: '08101112121',
+        name: 'Example User',
+      },
+      customizations: {
+        title: 'Pied Piper Payments',
+        logo: 'http://www.piedpiper.com/app/themes/joystick-v27/images/logo.png',
+      },
+    },
+    { headers: { Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}` } }
+  );
+
+  if (!result)
+    return res.status(500).json({ message: 'Internal error occured' });
+
+  return result;
+});
+
+
 //#endregion
 
 //#region Server Setup
@@ -92,7 +127,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.log(`${'\x1b[31m'}`); // start color red
   console.log(`${err.message}`);
   console.log(`${'\x1b][0m]'}`); //stop color
-  
+
   return res
     .status(500)
     .send({ success: false, status: 500, message: err.message });
