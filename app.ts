@@ -34,10 +34,10 @@ app.get('/checkout', async (req: Request, res: Response) => {
   const result = await flutterwaveAPI.post(
     '/payments',
     {
-      tx_ref: 'ref',
+      tx_ref: Date.now(),
       amount: 200,
       currency: 'NGN',
-      redirect_url: 'https://flutterwave.com/ng',
+      redirect_url: 'http://localhost:5000/callback',
       customer: {
         email: 'user@example.com',
         phone_number: '08101112121',
@@ -54,9 +54,15 @@ app.get('/checkout', async (req: Request, res: Response) => {
   if (!result)
     return res.status(500).json({ message: 'Internal error occured' });
 
-  return result;
+  return res.send(result);
 });
 
+app.get('/callback', async (req: Request, res: Response) => {
+  return res.send({
+    message: 'Payment complete',
+    data: req.query,
+  });
+});
 
 //#endregion
 
